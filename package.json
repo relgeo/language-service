@@ -1,0 +1,52 @@
+{
+  "name": "relgeo-language-service",
+  "version": "0.4.0",
+  "description": "Language intelligence (completions, diagnostics, schema) for the RelGeo DSL",
+  "homepage": "https://relgeo.github.io/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/relgeo/language-service.git"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "relgeo",
+    "lsp",
+    "language-service",
+    "codemirror",
+    "json-schema"
+  ],
+  "author": "Agus Made",
+  "license": "MIT",
+  "dependencies": {
+    "js-yaml": "^4.1.1",
+    "vscode-languageserver-types": "^3.17.5"
+  },
+  "peerDependencies": {
+    "relgeo-core": "^0.4.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "relgeo-core": "^0.4.0",
+    "tsup": "^8.5.1",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.5"
+  }
+}
