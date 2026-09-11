@@ -9,8 +9,8 @@ Metadata package `@relgeo/language-service` saat ini adalah `0.5.0`, pada compat
 Status packaging saat ini:
 
 * package ini adalah library surface untuk editor intelligence
-* jalur konsumsi yang paling sehat saat ini masih melalui monorepo workspace
-* surface registry mandiri sebaiknya diperlakukan sebagai langkah packaging terpisah
+* package publik tersedia melalui npm sebagai `@relgeo/language-service`
+* workspace root tetap dipakai untuk integrasi dan verifikasi lintas-repo
 
 Pakai package ini jika Anda ingin:
 
