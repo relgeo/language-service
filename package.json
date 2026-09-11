@@ -1,6 +1,6 @@
 {
-  "name": "relgeo-language-service",
-  "version": "0.4.0",
+  "name": "@relgeo/language-service",
+  "version": "0.5.0",
   "description": "Language intelligence (completions, diagnostics, schema) for the RelGeo DSL",
   "homepage": "https://relgeo.github.io/",
   "repository": {
@@ -35,16 +35,20 @@
   ],
   "author": "Agus Made",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "dependencies": {
     "js-yaml": "^4.1.1",
     "vscode-languageserver-types": "^3.17.5"
   },
   "peerDependencies": {
-    "relgeo-core": "^0.4.0"
+    "@relgeo/core": "^0.5.0"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
-    "relgeo-core": "^0.4.0",
+    "@relgeo/core": "^0.5.0",
     "tsup": "^8.5.1",
     "typescript": "~6.0.3",
     "vitest": "^4.1.5"

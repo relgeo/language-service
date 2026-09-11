@@ -4,7 +4,7 @@ Intelligence layer untuk DSL RelGeo.
 
 Package ini mengikuti kontrak aktif `RelGeo DSL v0.5`, yang disajikan melalui website pada `/docs/language-spec/`.
 
-Metadata package `relgeo-language-service` saat ini adalah `0.4.0`. Versi package library ini dikelola terpisah dari kontrak DSL `v0.5` dan tidak dengan sendirinya menyatakan adanya release registry.
+Metadata package `@relgeo/language-service` saat ini adalah `0.5.0`, pada compatibility line RelGeo DSL `v0.5`. Patch release dapat bergerak mandiri; perubahan kontrak bahasa akan dinaikkan bersama ke line berikutnya.
 
 Status packaging saat ini:
 
@@ -20,10 +20,10 @@ Pakai package ini jika Anda ingin:
 
 Jika yang Anda butuhkan berbeda:
 
-* gunakan `relgeo-core` untuk runtime parse/resolve
+* gunakan `@relgeo/core` untuk runtime parse/resolve
 * gunakan `relgeo-playground` bila Anda ingin aplikasi interaktif yang sudah jadi
 
-`relgeo-language-service` menyediakan fitur editor pintar seperti auto-completion, diagnostics (linting), dan JSON Schema untuk dokumen RelGeo.
+`@relgeo/language-service` menyediakan fitur editor pintar seperti auto-completion, diagnostics (linting), dan JSON Schema untuk dokumen RelGeo.
 
 Package ini dirancang agar editor dapat memahami RelGeo sebagai sebuah **typed geometry language**, bukan sekadar YAML biasa.
 
@@ -110,7 +110,7 @@ center
 
 Diagnostics tidak hanya memeriksa syntax YAML.
 
-Language service juga menggunakan validator dari `relgeo-core` untuk mendeteksi:
+Language service juga menggunakan validator dari `@relgeo/core` untuk mendeteksi:
 
 - circular dependency
 - invalid anchors
@@ -141,7 +141,7 @@ Package menyediakan JSON Schema bawaan untuk:
 - CodeMirror integrations
 - tooling eksternal
 
-Schema selalu diarahkan agar sinkron dengan semantic contract dari `relgeo-core`.
+Schema selalu diarahkan agar sinkron dengan semantic contract dari `@relgeo/core`.
 
 ---
 
@@ -198,11 +198,11 @@ pnpm install
 Jika suatu saat package ini dipublikasikan terpisah, surface install-nya ditargetkan tetap berbentuk library integration package.
 
 ```bash
-npm install relgeo-language-service
+npm install @relgeo/language-service
 ```
 
 > [!IMPORTANT]
-> Package ini membutuhkan `relgeo-core`.
+> Package ini membutuhkan `@relgeo/core`.
 
 ---
 
@@ -223,7 +223,7 @@ flowchart TD
 # Basic Usage
 
 ```typescript
-import { RelGeoLanguageService } from 'relgeo-language-service';
+import { RelGeoLanguageService } from '@relgeo/language-service';
 
 const langService = new RelGeoLanguageService();
 
@@ -240,7 +240,7 @@ const completions = langService.getCompletions(code, {
 # Integrating with CodeMirror 6
 
 ```typescript
-import { RelGeoLanguageService } from 'relgeo-language-service';
+import { RelGeoLanguageService } from '@relgeo/language-service';
 import { linter } from '@codemirror/lint';
 import { autocompletion } from '@codemirror/autocomplete';
 
@@ -377,9 +377,9 @@ Karena itu diagnostics diarahkan untuk:
 
 ---
 
-# Relationship with relgeo-core
+# Relationship with @relgeo/core
 
-`relgeo-language-service` dibangun di atas semantic runtime dari `relgeo-core`.
+`@relgeo/language-service` dibangun di atas semantic runtime dari `@relgeo/core`.
 
 Artinya:
 
@@ -433,9 +433,9 @@ Arah pengembangan berikutnya:
 
 # Related Packages
 
-- `relgeo-core` → typed geometry runtime
-- `relgeo-language-service` → editor intelligence layer
-- `relgeo-cli` → command line tooling
+- `@relgeo/core` → typed geometry runtime
+- `@relgeo/language-service` → editor intelligence layer
+- `@relgeo/cli` → command line tooling
 - `relgeo-playground` → lightweight browser IDE
 - `relgeo_flutter` → richer local workbench
 

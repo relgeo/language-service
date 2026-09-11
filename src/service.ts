@@ -1,4 +1,4 @@
-import { parseRelGeo, Validator, resolveGeometry } from 'relgeo-core';
+import { parseRelGeo, Validator, resolveGeometry } from '@relgeo/core';
 import { Diagnostic, DiagnosticSeverity, CompletionItemKind, Hover } from 'vscode-languageserver-types';
 import { KEYWORDS, OBJECT_TYPES, OBJECT_ANCHORS, PLACE_FIELDS, GEOMETRY_FUNCTIONS, MATH_FUNCTIONS, COLLECTION_FUNCTIONS, INTERSECTION_SELECTORS, getCompletionsForType, VIEW_FIELDS, SHEET_FIELDS, SHEET_VIEW_PLACEMENT_FIELDS, ON_NAMESPACES, ON_POINT_FIELDS, ON_PATH_FIELDS, META_FIELDS, REPEAT_ALONG_FIELDS } from './completions';
 import { type RelGeoSemanticLine, tokenizeRelGeoDocument } from './tokens';
