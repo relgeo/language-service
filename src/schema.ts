@@ -5,6 +5,7 @@ export const RELGEO_SCHEMA = {
   "properties": {
     "version": {
       "type": ["string", "number"],
+      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", 0.1, 0.2, 0.3, 0.4, 0.5],
       "default": "0.5"
     },
     "scene": {

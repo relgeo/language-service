@@ -100,6 +100,15 @@ describe('META_FIELDS', () => {
 });
 
 describe('RELGEO_SCHEMA', () => {
+  it('limits document versions to the declared compatibility history', () => {
+    const versionSchema = (RELGEO_SCHEMA as any).properties.version;
+    expect(versionSchema.enum).toEqual([
+      '0.1', '0.2', '0.3', '0.4', '0.5',
+      0.1, 0.2, 0.3, 0.4, 0.5,
+    ]);
+    expect(versionSchema.default).toBe('0.5');
+  });
+
   it('includes role and label in object metadata schema', () => {
     const metaProps = (RELGEO_SCHEMA as any).definitions.object.properties.meta.properties;
     expect(metaProps.role).toBeDefined();
