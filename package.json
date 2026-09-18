@@ -1,11 +1,11 @@
 {
   "name": "@relgeo/language-service",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Language intelligence (completions, diagnostics, schema) for the RelGeo DSL",
   "homepage": "https://relgeo.github.io/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/relgeo/language-service.git"
+    "url": "git+https://github.com/relgeo/language-service.git"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
