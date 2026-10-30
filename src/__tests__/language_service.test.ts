@@ -23,6 +23,8 @@ import {
   SPLIT_FIELDS,
 } from '../completions';
 import { CompletionItemKind } from 'vscode-languageserver-types';
+import { getSchemaDriftReport } from '../schema-drift';
+import { isCurrentDocumentAnalysis, isStaleDocumentAnalysis } from '../protocol';
 
 const svc = new RelGeoLanguageService();
 
@@ -100,6 +102,10 @@ describe('META_FIELDS', () => {
 });
 
 describe('RELGEO_SCHEMA', () => {
+  it('is available through the documented service API', () => {
+    expect(svc.getSchema()).toBe(RELGEO_SCHEMA);
+  });
+
   it('limits document versions to the declared compatibility history', () => {
     const versionSchema = (RELGEO_SCHEMA as any).properties.version;
     expect(versionSchema.enum).toEqual([
@@ -137,6 +143,29 @@ describe('RELGEO_SCHEMA', () => {
     expect(splitProps.target).toBeDefined();
     expect(splitProps.at).toBeDefined();
     expect(splitProps.pick).toBeDefined();
+  });
+});
+
+describe('schema drift report', () => {
+  it('reports a clean active vocabulary baseline', () => {
+    const report = getSchemaDriftReport();
+    expect(report.differences).toEqual([]);
+    expect(report.ok).toBe(true);
+    expect(report.checked.objectTypes).toBeGreaterThan(0);
+  });
+
+  it('reports missing and extra root sections deterministically', () => {
+    const schema = structuredClone(RELGEO_SCHEMA) as any;
+    delete schema.properties.views;
+    schema.properties.experimental = { type: 'object' };
+
+    const report = getSchemaDriftReport(schema);
+    expect(report.differences).toContainEqual({
+      category: 'root-sections',
+      context: 'schema',
+      missing: ['views'],
+      extra: ['experimental'],
+    });
   });
 });
 
@@ -908,5 +937,95 @@ objects:
   it('includes boolean in OBJECT_TYPES completions', () => {
     const labels = OBJECT_TYPES.map(c => c.label);
     expect(labels).toContain('boolean');
+  });
+});
+
+describe('selected editor-service contracts', () => {
+  it('returns bounded object references for semantic expression completion', () => {
+    const code = `objects:
+  origin:
+    type: point
+    at: [0, 0]
+  panel:
+    type: rect
+    size: [10, 10]
+    center: `;
+    const result = svc.getCompletions(code, { line: 7, character: 12 });
+    expect(result.map((item) => item.label)).toContain('origin');
+    expect(result.find((item) => item.label === 'origin')?.detail).toBe('point');
+    expect(result.find((item) => item.label === 'origin')?.textEdit).toMatchObject({
+      range: {
+        start: { line: 7, character: 12 },
+        end: { line: 7, character: 12 },
+      },
+      newText: 'origin',
+    });
+  });
+
+  it('returns existing IDs at object context and recovers from a type-key typo', () => {
+    const objectContext = `objects:
+  origin:
+    type: point
+  `;
+    expect(svc.getCompletions(objectContext, { line: 3, character: 2 }).map((item) => item.label))
+      .toContain('origin');
+
+    const typo = `objects:
+  panel:
+    typ: `;
+    expect(svc.getCompletions(typo, { line: 2, character: 9 }).map((item) => item.label))
+      .toContain('rect');
+  });
+
+  it('attaches exact ranges to hover results', () => {
+    const code = `objects:
+  origin:
+    type: point
+    at: [0, 0]
+`;
+    const hover = svc.getHover(code, { line: 1, character: 8 });
+    expect(hover?.range).toEqual({
+      start: { line: 1, character: 2 },
+      end: { line: 1, character: 8 },
+    });
+  });
+
+  it('keeps independent incomplete-source diagnostics instead of returning only the first error', () => {
+    const code = `objects:
+  first:
+    type: line
+  second:
+    type: rect
+`;
+    const diagnostics = svc.getDiagnostics(code);
+    expect(diagnostics.length).toBeGreaterThanOrEqual(2);
+    expect(new Set(diagnostics.map((diagnostic) => diagnostic.code))).toEqual(
+      new Set(['MISSING_REQUIRED_FIELD']),
+    );
+  });
+});
+
+describe('document analysis identity', () => {
+  const result = svc.analyzeDocument({
+    documentId: 'doc-1',
+    version: 4,
+    requestId: 9,
+    code: 'objects:\n',
+  });
+
+  it('round-trips explicit identity fields through a serializable result', () => {
+    expect(JSON.parse(JSON.stringify(result))).toMatchObject({
+      protocolVersion: '0.1',
+      documentId: 'doc-1',
+      version: 4,
+      requestId: 9,
+    });
+  });
+
+  it('accepts only the current document/request identity', () => {
+    const current = { documentId: 'doc-1', version: 4, requestId: 9 };
+    expect(isCurrentDocumentAnalysis(result, current)).toBe(true);
+    expect(isStaleDocumentAnalysis(result, { ...current, requestId: 8 })).toBe(true);
+    expect(isStaleDocumentAnalysis(result, { ...current, version: 5 })).toBe(true);
   });
 });

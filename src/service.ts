@@ -1,7 +1,10 @@
-import { parseRelGeo, Validator, resolveGeometry } from '@relgeo/core';
-import { Diagnostic, DiagnosticSeverity, CompletionItemKind, Hover } from 'vscode-languageserver-types';
+import { collectDiagnostics, parseRelGeo, resolveGeometry } from '@relgeo/core';
+import { CompletionItem, Diagnostic, DiagnosticSeverity, CompletionItemKind, Hover } from 'vscode-languageserver-types';
 import { KEYWORDS, OBJECT_TYPES, OBJECT_ANCHORS, PLACE_FIELDS, GEOMETRY_FUNCTIONS, MATH_FUNCTIONS, COLLECTION_FUNCTIONS, INTERSECTION_SELECTORS, getCompletionsForType, VIEW_FIELDS, SHEET_FIELDS, SHEET_VIEW_PLACEMENT_FIELDS, ON_NAMESPACES, ON_POINT_FIELDS, ON_PATH_FIELDS, META_FIELDS, REPEAT_ALONG_FIELDS } from './completions';
 import { type RelGeoSemanticLine, tokenizeRelGeoDocument } from './tokens';
+import type { DocumentAnalysisRequest, DocumentAnalysisResult } from './protocol';
+import { LANGUAGE_SERVICE_PROTOCOL_VERSION } from './protocol';
+import { RELGEO_SCHEMA } from './schema';
 
 export class RelGeoLanguageService {
   private parseYamlLineKey(trimmed: string): string | undefined {
@@ -106,6 +109,30 @@ export class RelGeoLanguageService {
     return result;
   }
 
+  private getObjectReferenceCompletions(code: string, allowedTypes?: Set<string>): CompletionItem[] {
+    return this.getAllObjects(code)
+      .filter((object) => !allowedTypes || allowedTypes.has(object.type))
+      .map((object) => ({
+        label: object.id,
+        kind: CompletionItemKind.Reference,
+        detail: object.type,
+        documentation: `Reference to ${object.type} object "${object.id}"`,
+      }));
+  }
+
+  private mergeCompletionItems(...groups: CompletionItem[][]): CompletionItem[] {
+    const seen = new Set<string>();
+    const merged: CompletionItem[] = [];
+    for (const group of groups) {
+      for (const item of group) {
+        if (seen.has(item.label)) continue;
+        seen.add(item.label);
+        merged.push(item);
+      }
+    }
+    return merged;
+  }
+
   private isIntersectionSelectorContext(line: string): boolean {
     return /intersection\(\s*[^,]+,\s*[^,()]+,\s*[^)]*$/.test(line);
   }
@@ -124,11 +151,9 @@ export class RelGeoLanguageService {
    * Provides diagnostics for a RelGeo document
    */
   getDiagnostics(code: string): Diagnostic[] {
-    const diagnostics: Diagnostic[] = [];
     const lines = code.split('\n');
-
-    // Helper to find line number by following a path (e.g. "objects.box.place")
-    const findLineForPath = (pathStr: string): number => {
+    const findLineForPath = (pathStr?: string): number => {
+      if (!pathStr) return 0;
       const parts = pathStr
         .split('.')
         .map((part) => part.replace(/\[\d+\]/g, ''))
@@ -155,56 +180,58 @@ export class RelGeoLanguageService {
       return currentLine;
     };
 
-    try {
-      // Run in validate mode to actually catch missing fields, invalid expressions, etc.
-      // Editor mode suppresses these to allow incomplete typing, but diagnostics needs to show them.
-      const doc = parseRelGeo(code, { mode: 'validate' });
-      const validator = new Validator(doc, 'validate');
-      
-      try {
-        validator.validate();
-      } catch (err: any) {
-        let line = 0;
-        if (err.path) {
-          line = findLineForPath(err.path);
-        } else if (err.objectId) {
-          line = findLineForPath(`objects.${err.objectId}`);
-        }
+    return collectDiagnostics(code, {
+      mode: 'validate',
+      includeResolution: false,
+    }).map((diagnostic) => {
+      const fallbackLine = findLineForPath(
+        diagnostic.path ?? (diagnostic.objectId ? `objects.${diagnostic.objectId}` : undefined),
+      );
+      const line = diagnostic.range?.start.line ?? fallbackLine;
+      const endLine = diagnostic.range?.end.line ?? line;
+      const safeStartLine = Math.max(0, Math.min(line, Math.max(0, lines.length - 1)));
+      const safeEndLine = Math.max(0, Math.min(endLine, Math.max(0, lines.length - 1)));
+      const startCharacter = diagnostic.range?.start.column ?? 0;
+      const endCharacter = diagnostic.range?.end.column ?? lines[safeEndLine]?.length ?? 0;
+      const severity = diagnostic.severity === 'warning'
+        ? DiagnosticSeverity.Warning
+        : diagnostic.severity === 'info'
+          ? DiagnosticSeverity.Information
+          : DiagnosticSeverity.Error;
 
-        diagnostics.push({
-          range: {
-            start: { line, character: 0 },
-            end: { line, character: lines[line]?.length || 100 }
-          },
-          message: err.message,
-          severity: DiagnosticSeverity.Error,
-          code: err.code,
-          source: 'relgeo'
-        });
-      }
-    } catch (err: any) {
-      let line = 0;
-      if (err.path) {
-        line = findLineForPath(err.path);
-      } else if (err.objectId) {
-        line = findLineForPath(`objects.${err.objectId}`);
-      } else if (err.mark && typeof err.mark.line === 'number') {
-        // If parser error has mark (YAML parser), try to use it
-        line = err.mark.line;
-      }
-
-      diagnostics.push({
+      return {
         range: {
-          start: { line, character: 0 },
-          end: { line, character: lines[line]?.length || 100 }
+          start: { line: safeStartLine, character: startCharacter },
+          end: { line: safeEndLine, character: endCharacter },
         },
-        message: err.message,
-        severity: DiagnosticSeverity.Error,
-        code: err.code,
-        source: 'relgeo-parser'
-      });
-    }
-    return diagnostics;
+        message: diagnostic.message,
+        severity,
+        code: diagnostic.code,
+        source: diagnostic.phase === 'parse' ? 'relgeo-parser' : 'relgeo',
+      };
+    });
+  }
+
+  /**
+   * Returns the published schema through the documented service API.
+   */
+  getSchema() {
+    return RELGEO_SCHEMA;
+  }
+
+  /**
+   * Analyze a document with explicit identity fields so hosts can reject
+   * responses that no longer match their active document/request.
+   */
+  analyzeDocument(request: DocumentAnalysisRequest): DocumentAnalysisResult {
+    return {
+      protocolVersion: LANGUAGE_SERVICE_PROTOCOL_VERSION,
+      documentId: request.documentId,
+      version: request.version,
+      requestId: request.requestId,
+      diagnostics: this.getDiagnostics(request.code),
+      semanticTokens: this.getSemanticTokens(request.code),
+    };
   }
 
   /**
@@ -231,6 +258,11 @@ export class RelGeoLanguageService {
     if (!wordBefore) return null;
     
     const fullWord = wordBefore[0] + (wordAfter ? wordAfter[0] : '');
+    const wordStart = Math.max(0, position.character - wordBefore[0].length);
+    const hoverRange = {
+      start: { line: position.line, character: wordStart },
+      end: { line: position.line, character: wordStart + fullWord.length },
+    };
     
     // Try to resolve the whole document to get values
     let resolved: any;
@@ -250,7 +282,7 @@ export class RelGeoLanguageService {
       } else if (obj.type === 'line') {
         content += `length: ${obj.length.toFixed(2)}`;
       }
-      return { contents: { kind: 'markdown', value: content } };
+      return { contents: { kind: 'markdown', value: content }, range: hoverRange };
     }
 
     // 2. Check for dot notation (e.g. "Panel.center.x")
@@ -264,16 +296,16 @@ export class RelGeoLanguageService {
         // Handle coordinates/anchors
         if (property === 'x' || property === 'y') {
             const val = obj[property];
-            return { contents: { kind: 'markdown', value: `**${fullWord}**\n\nValue: ${val.toFixed(2)}` } };
+            return { contents: { kind: 'markdown', value: `**${fullWord}**\n\nValue: ${val.toFixed(2)}` }, range: hoverRange };
         }
         // Handle common anchors
         if (obj[property] && typeof obj[property] === 'object' && 'x' in obj[property]) {
             const pt = obj[property];
-            return { contents: { kind: 'markdown', value: `**${fullWord}**\n\nLocation: (${pt.x.toFixed(2)}, ${pt.y.toFixed(2)})` } };
+            return { contents: { kind: 'markdown', value: `**${fullWord}**\n\nLocation: (${pt.x.toFixed(2)}, ${pt.y.toFixed(2)})` }, range: hoverRange };
         }
         // Handle scalar properties (length, width, etc.)
         if (typeof obj[property] === 'number') {
-            return { contents: { kind: 'markdown', value: `**${fullWord}**\n\nValue: ${obj[property].toFixed(2)}` } };
+            return { contents: { kind: 'markdown', value: `**${fullWord}**\n\nValue: ${obj[property].toFixed(2)}` }, range: hoverRange };
         }
       }
     }
@@ -284,7 +316,23 @@ export class RelGeoLanguageService {
   /**
    * Provides completions based on the current context
    */
-  getCompletions(code: string, position: { line: number; character: number }) {
+  getCompletions(code: string, position: { line: number; character: number }): CompletionItem[] {
+    const items = this.getCompletionsInternal(code, position);
+    const line = code.split('\n')[position.line] ?? '';
+    const beforeCursor = line.slice(0, position.character);
+    const token = beforeCursor.match(/[\w\d_&-]*$/)?.[0] ?? '';
+    const range = {
+      start: { line: position.line, character: position.character - token.length },
+      end: { line: position.line, character: position.character },
+    };
+
+    return items.map((item) => ({
+      ...item,
+      textEdit: item.textEdit ?? { range, newText: item.label },
+    }));
+  }
+
+  private getCompletionsInternal(code: string, position: { line: number; character: number }): CompletionItem[] {
     const lines = code.split('\n');
     const currentLine = lines[position.line] || '';
     const beforeCursor = currentLine.slice(0, position.character);
@@ -315,9 +363,13 @@ export class RelGeoLanguageService {
     }
 
     const path = contextChain.map(c => c.key);
-    
+
     // 3. Specialized Context Logic
-    
+    const currentKey = this.parseYamlLineKey(currentLine.trim());
+    if (currentKey && currentKey !== 'type' && currentKey.startsWith('typ')) {
+      return OBJECT_TYPES;
+    }
+
     // Inside 'place' block
     if (path.includes('place')) {
       return PLACE_FIELDS;
@@ -513,7 +565,10 @@ export class RelGeoLanguageService {
           if (this.isIntersectionSelectorContext(currentLine)) {
             return INTERSECTION_SELECTORS;
           }
-          return [...GEOMETRY_FUNCTIONS, ...MATH_FUNCTIONS, ...COLLECTION_FUNCTIONS];
+          return this.mergeCompletionItems(
+            [...GEOMETRY_FUNCTIONS, ...MATH_FUNCTIONS, ...COLLECTION_FUNCTIONS],
+            this.getObjectReferenceCompletions(code),
+          );
         }
 
         return getCompletionsForType(objectType);
@@ -521,7 +576,7 @@ export class RelGeoLanguageService {
       
       // If we are at the object ID level (objects -> [here])
       if (objectsIdx === 0) {
-          return []; // Suggesting IDs is complex, return empty for now
+          return this.getObjectReferenceCompletions(code);
       }
     }
 
@@ -544,7 +599,10 @@ export class RelGeoLanguageService {
       if (this.isIntersectionSelectorContext(currentLine)) {
         return INTERSECTION_SELECTORS;
       }
-      return [...GEOMETRY_FUNCTIONS, ...MATH_FUNCTIONS, ...COLLECTION_FUNCTIONS];
+      return this.mergeCompletionItems(
+        [...GEOMETRY_FUNCTIONS, ...MATH_FUNCTIONS, ...COLLECTION_FUNCTIONS],
+        this.getObjectReferenceCompletions(code),
+      );
     }
 
     // Fallback: only keywords at root or unknown context

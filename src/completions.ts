@@ -190,7 +190,6 @@ export const POLYGON_FIELDS: CompletionItem[] = [
 
 export const ARC_FIELDS: CompletionItem[] = [
   ...COMMON_FIELDS,
-  ON_FIELD,
   { label: 'from', kind: CompletionItemKind.Property, documentation: 'Arc start point for 3-point mode' },
   { label: 'through', kind: CompletionItemKind.Property, documentation: 'Arc through point for 3-point mode' },
   { label: 'to', kind: CompletionItemKind.Property, documentation: 'Arc end point for 3-point mode' },
@@ -202,7 +201,6 @@ export const ARC_FIELDS: CompletionItem[] = [
 
 export const CUBIC_FIELDS: CompletionItem[] = [
   ...COMMON_FIELDS,
-  ON_FIELD,
   { label: 'from', kind: CompletionItemKind.Property, documentation: 'Curve start point' },
   { label: 'cp1', kind: CompletionItemKind.Property, documentation: 'First control point' },
   { label: 'cp2', kind: CompletionItemKind.Property, documentation: 'Second control point' },
@@ -211,7 +209,6 @@ export const CUBIC_FIELDS: CompletionItem[] = [
 
 export const QUADRATIC_FIELDS: CompletionItem[] = [
   ...COMMON_FIELDS,
-  ON_FIELD,
   { label: 'from', kind: CompletionItemKind.Property, documentation: 'Curve start point' },
   { label: 'cp', kind: CompletionItemKind.Property, documentation: 'Control point' },
   { label: 'to', kind: CompletionItemKind.Property, documentation: 'Curve end point' },
@@ -278,6 +275,7 @@ export const DIMENSION_FIELDS: CompletionItem[] = [
 
 export const ANNOTATION_FIELDS: CompletionItem[] = [
   ...COMMON_FIELDS,
+  ON_FIELD,
   { label: 'target', kind: CompletionItemKind.Property, documentation: 'Target point/object for annotation' },
   { label: 'text', kind: CompletionItemKind.Property, documentation: 'Annotation text value' },
   { label: 'leader', kind: CompletionItemKind.Property, documentation: 'Leader line options { from, to }' },
@@ -519,3 +517,8 @@ export const SHEET_VIEW_PLACEMENT_FIELDS: CompletionItem[] = [
   { label: 'place', kind: CompletionItemKind.Property, documentation: 'Placement coordinates { topLeft, center }' },
   { label: 'meta', kind: CompletionItemKind.Property, documentation: 'Placement-level metadata' },
 ];
+
+/** Named catalogs used by the schema drift checker and consumer adapters. */
+export const COMPLETION_CATALOGS = {
+  presentation: META_FIELDS,
+} as const;

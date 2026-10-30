@@ -4,7 +4,7 @@ Intelligence layer untuk DSL RelGeo.
 
 Package ini mengikuti kontrak aktif `RelGeo DSL v0.5`, yang disajikan melalui website pada `/docs/language-spec/`.
 
-Metadata package `@relgeo/language-service` saat ini adalah `0.5.0`, pada compatibility line RelGeo DSL `v0.5`. Patch release dapat bergerak mandiri; perubahan kontrak bahasa akan dinaikkan bersama ke line berikutnya.
+Metadata package `@relgeo/language-service` saat ini adalah `0.5.1`, pada compatibility line RelGeo DSL `v0.5`. Patch release dapat bergerak mandiri; perubahan kontrak bahasa akan dinaikkan bersama ke line berikutnya.
 
 Status packaging saat ini:
 
